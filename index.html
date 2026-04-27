@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>L&D Solutions Catalog</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="solutions-data.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #06060a;
+      --fg: #ffffff;
+      --radius: 18px;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'Barlow', sans-serif;
+      font-weight: 300;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #000; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+
+    .heading { font-family: 'Instrument Serif', serif; font-style: italic; line-height: 0.95; letter-spacing: -0.02em; }
+
+    /* GLASS */
+    .glass {
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 4px 24px rgba(0,0,0,0.3);
+    }
+    .glass-hi {
+      background: rgba(255,255,255,0.06);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border: 1px solid rgba(255,255,255,0.16);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 40px rgba(0,0,0,0.4);
+    }
+
+    /* NOISE */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    nav {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+      z-index: 200;
+      display: flex; align-items: center; gap: 4px;
+      padding: 6px 8px; border-radius: 999px;
+    }
+    .nav-link {
+      font-size: 13px; font-weight: 400; color: rgba(255,255,255,0.6);
+      text-decoration: none; padding: 7px 15px; border-radius: 999px;
+      transition: color 0.2s, background 0.2s; white-space: nowrap;
+    }
+    .nav-link:hover { color: #fff; background: rgba(255,255,255,0.09); }
+
+    section { padding: 100px 24px; position: relative; z-index: 1; }
+    .container { max-width: 1120px; margin: 0 auto; }
+    .container-sm { max-width: 780px; margin: 0 auto; }
+
+    .badge {
+      display: inline-flex; align-items: center;
+      font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase;
+      color: rgba(255,255,255,0.5); padding: 5px 14px; border-radius: 999px;
+    }
+
+    .orb {
+      position: absolute; border-radius: 50%;
+      filter: blur(90px); pointer-events: none; opacity: 0.14;
+    }
+
+    /* HERO */
+    .hero {
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; padding: 120px 24px 80px; overflow: hidden;
+    }
+
+    /* CATALOG GRID */
+    .catalog-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .sol-card {
+      border-radius: 16px; padding: 22px 22px 18px;
+      cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+      position: relative; overflow: hidden;
+    }
+    .sol-card:hover { transform: translateY(-3px); box-shadow: 0 16px 48px rgba(0,0,0,0.5); }
+
+    /* CATEGORY PILLS */
+    .cat-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 40px; }
+    .cat-pill {
+      font-size: 12px; font-weight: 500; letter-spacing: 0.06em;
+      padding: 7px 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.55);
+      cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .cat-pill:hover { color: #fff; background: rgba(255,255,255,0.09); }
+    .cat-pill.active { color: #fff; background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.3); }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,0.72); backdrop-filter: blur(10px);
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    .modal-box {
+      border-radius: 24px; padding: 36px; max-width: 600px; width: 100%;
+      max-height: 88vh; overflow-y: auto;
+      background: rgba(10,10,18,0.9);
+    }
+
+    /* CHAT */
+    .chat-area {
+      display: flex; flex-direction: column; gap: 16px;
+      max-height: 480px; overflow-y: auto;
+      padding-right: 4px;
+    }
+    .chat-bubble {
+      padding: 14px 18px; border-radius: 16px; font-size: 14px; line-height: 1.65;
+      max-width: 90%; white-space: pre-wrap;
+    }
+    .chat-bubble.user {
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1);
+      align-self: flex-end; color: rgba(255,255,255,0.85);
+    }
+    .chat-bubble.assistant {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      align-self: flex-start; color: rgba(255,255,255,0.75);
+    }
+    .chat-input-row {
+      display: flex; gap: 10px; margin-top: 16px; align-items: flex-end;
+    }
+    .chat-textarea {
+      flex: 1; background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 14px;
+      color: #fff; font-family: 'Barlow', sans-serif; font-weight: 300;
+      font-size: 14px; padding: 13px 16px; resize: none; outline: none;
+      transition: border-color 0.2s; line-height: 1.5;
+    }
+    .chat-textarea::placeholder { color: rgba(255,255,255,0.28); }
+    .chat-textarea:focus { border-color: rgba(255,255,255,0.28); }
+    .send-btn {
+      width: 44px; height: 44px; border-radius: 12px; border: none;
+      background: rgba(255,255,255,0.1); color: #fff; cursor: pointer;
+      font-size: 16px; display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s; flex-shrink: 0;
+    }
+    .send-btn:hover { background: rgba(255,255,255,0.18); }
+    .send-btn:disabled { opacity: 0.35; pointer-events: none; }
+
+    /* STEPS */
+    .steps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px,1fr)); gap: 20px; }
+
+    /* ACCORDION */
+    .acc-item { border-bottom: 1px solid rgba(255,255,255,0.07); }
+    .acc-btn {
+      width: 100%; background: none; border: none; color: #fff;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 0; cursor: pointer; text-align: left;
+      font-family: 'Barlow', sans-serif; font-weight: 400; font-size: 15px;
+    }
+    .acc-content {
+      color: rgba(255,255,255,0.48); font-size: 14px;
+      overflow: hidden; transition: max-height 0.35s ease, padding 0.35s ease;
+    }
+
+    /* COST DOTS */
+    .cost-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 3px; }
+
+    /* DIVIDER */
+    .divider { height: 1px; background: rgba(255,255,255,0.06); max-width: 900px; margin: 0 auto; }
+
+    /* SPINNER */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.15); border-top-color: rgba(255,255,255,0.7); animation: spin 0.75s linear infinite; }
+
+    @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+    .fade-up { animation: fadeUp 0.5s ease forwards; }
+
+    @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0; } }
+    .cursor-blink { animation: blink 1s step-end infinite; }
+
+    @media (max-width: 700px) {
+      section { padding: 70px 16px; }
+      nav { top: 10px; padding: 4px; gap: 0; }
+      .nav-link { font-size: 11px; padding: 6px 10px; }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ── FAQS ────────────────────────────────────────────────────────────────────
+const FAQS = [
+  { q: "Who should use this catalog?", a: "This catalog is for our entire L&D team — consultants and managers. Use it at the start of any new project or stakeholder conversation to frame which solution types are worth exploring before you commit to a direction." },
+  { q: "Does this replace a proper needs analysis?", a: "No — it's a starting point, not a shortcut. The catalog helps you ask better questions and frame the conversation early. You still need to validate business needs, audience context, and success metrics through proper discovery." },
+  { q: "Can I recommend more than one solution?", a: "Absolutely. Many strong learning strategies blend solutions — e.g., a short Synthesia video for awareness + a job aid for on-the-job reference + a microlearning series for reinforcement. The AI advisor will often suggest combinations." },
+  { q: "How often is the catalog updated?", a: "We review it quarterly or whenever a meaningful new solution type is piloted internally. If you've worked with something not listed here, flag it to the team lead so we can add it." },
+  { q: "What if the AI advisor gives a surprising recommendation?", a: "Take it as a thinking prompt, not a mandate. The AI surfaces patterns based on your description — your professional judgment and stakeholder context always take precedence." },
+  { q: "Where do costs and effort ratings come from?", a: "They're internal benchmarks based on our team's past projects and industry averages. They assume a standard level of content complexity and SME availability. Adjust based on your specific constraints." },
+];
+
+// ── SYSTEM PROMPT ────────────────────────────────────────────────────────────
+const SYSTEM_PROMPT = `You are an expert L&D consultant helping a team pick the right learning solution. Be conversational, direct, and brief. Bold solution names like **Articulate Rise**.
+
+Our catalog has 32 solutions across 8 categories:
+- eLearning Authoring: Articulate Rise (low effort, responsive), Articulate Storyline (high effort, complex branching), Adobe Captivate (enterprise/VR), Microsoft Sway (free, informational), Vyond (animated video), LinkedIn Learning (off-shelf library)
+- Video: Synthesia (AI avatar, fast), Camtasia (screen recording), Live-Action Video (high quality, expensive), Smartphone/UGV (quick, informal), Panopto (video platform/hosting)
+- Performance Support: Job Aid PDF (fastest, point-of-need), Quick Reference Guide, Interactive PDF/Flipbook, OneNote Repository, SharePoint/Knowledge Hub, Digital Checklist/Power Apps
+- Live & ILT: Classroom ILT (high engagement, expensive), Virtual ILT/VILT (dispersed teams), Workshop/Working Session (problem-solving), Lunch & Learn (informal)
+- Social & Experiential: Mentoring Program, On-the-Job Training/OJT, Simulation/Role-Play
+- Microlearning & Mobile: Microlearning Modules (2-5 min), Mobile Push/SMS, Podcast/Audio Learning
+- Assessment: Knowledge Quiz, Skill Observation/Competency Checklist, Digital Badge/Certification
+- AI-Powered: AI Coaching/Chatbot (Sage AI), AI Content Assistance (Sage AI)
+
+When someone describes a project: recommend 2-3 best-fit solutions with brief reasoning, suggest a blend if appropriate, ask 1-2 clarifying questions. Keep responses under 200 words. Only recommend solutions from the catalog above.`;
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+function getCategoryMeta(catId) {
+  return CATEGORIES.find(c => c.id === catId) || { color: '#fff', accent: 'rgba(255,255,255,0.05)', label: '' };
+}
+
+function CostDots({ cost }) {
+  const n = (cost.match(/\$/g) || []).length;
+  const max = 4;
+  const meta = getCategoryMeta('');
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+      {Array.from({ length: max }).map((_, i) => (
+        <span key={i} className="cost-dot" style={{ background: i < n ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.1)' }} />
+      ))}
+    </span>
+  );
+}
+
+// ── SOLUTION MODAL ────────────────────────────────────────────────────────────
+function SolutionModal({ s, onClose }) {
+  if (!s) return null;
+  const cat = getCategoryMeta(s.category);
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box glass-hi" onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+          <div>
+            <p style={{ fontSize: 11, color: cat.color, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>{cat.label}</p>
+            <h2 className="heading" style={{ fontSize: 34 }}>{s.name}</h2>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginTop: 6 }}>{s.tagline}</p>
+          </div>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.08)', border: 'none', color: '#fff', width: 34, height: 34, borderRadius: 999, cursor: 'pointer', fontSize: 20, flexShrink: 0, marginLeft: 16 }}>×</button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 24 }}>
+          {[['Effort', s.effort], ['Cost', s.cost], ['Ease of Update', s.update]].map(([k, v]) => (
+            <div key={k} className="glass" style={{ borderRadius: 12, padding: '12px 14px' }}>
+              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>{k}</p>
+              <p style={{ fontSize: 13, fontWeight: 500 }}>{v}</p>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginBottom: 22 }}>
+          <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Use Cases</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {s.use_cases.map(u => (
+              <span key={u} style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', padding: '4px 11px', borderRadius: 999 }}>{u}</span>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <div>
+            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>✓ Advantages</p>
+            {s.pros.map(p => (
+              <p key={p} style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 7, paddingLeft: 10, borderLeft: `2px solid ${cat.color}44`, lineHeight: 1.5 }}>{p}</p>
+            ))}
+          </div>
+          <div>
+            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>✕ Limitations</p>
+            {s.cons.map(c => (
+              <p key={c} style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 7, paddingLeft: 10, borderLeft: '2px solid rgba(255,255,255,0.1)', lineHeight: 1.5 }}>{c}</p>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── CATALOG SECTION ───────────────────────────────────────────────────────────
+function CatalogSection({ onCardClick }) {
+  const [activeCategory, setActiveCategory] = useState('all');
+  const filtered = activeCategory === 'all' ? SOLUTIONS : SOLUTIONS.filter(s => s.category === activeCategory);
+
+  return (
+    <section id="browse" data-screen-label="Browse Catalog">
+      <div className="container">
+        <div style={{ textAlign: 'center', marginBottom: 48 }}>
+          <div className="glass badge" style={{ marginBottom: 18 }}>Browse</div>
+          <h2 className="heading" style={{ fontSize: 'clamp(36px, 5vw, 60px)', marginBottom: 14 }}>The solutions catalog</h2>
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, maxWidth: 500, margin: '0 auto' }}>
+            32 solutions across 8 categories. Click any card for the full breakdown.
+          </p>
+        </div>
+
+        <div className="cat-pills">
+          <button className={`cat-pill ${activeCategory === 'all' ? 'active' : ''}`} onClick={() => setActiveCategory('all')}>
+            All ({SOLUTIONS.length})
+          </button>
+          {CATEGORIES.map(cat => {
+            const count = SOLUTIONS.filter(s => s.category === cat.id).length;
+            return (
+              <button key={cat.id} className={`cat-pill ${activeCategory === cat.id ? 'active' : ''}`} onClick={() => setActiveCategory(cat.id)}>
+                {cat.label} ({count})
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="catalog-grid">
+          {filtered.map(s => {
+            const cat = getCategoryMeta(s.category);
+            return (
+              <div key={s.id} className="sol-card glass" style={{ background: cat.accent }} onClick={() => onCardClick(s)}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                  <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.09em', textTransform: 'uppercase', color: cat.color }}>{cat.label}</span>
+                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap', marginLeft: 8 }}>{s.effort}</span>
+                </div>
+                <h3 style={{ fontFamily: 'Instrument Serif', fontStyle: 'italic', fontSize: 21, marginBottom: 6, lineHeight: 1.1 }}>{s.name}</h3>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.42)', lineHeight: 1.55, marginBottom: 14 }}>{s.tagline}</p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <CostDots cost={s.cost} />
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>View details →</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── CHAT ADVISOR ──────────────────────────────────────────────────────────────
+function ChatAdvisor() {
+  const WELCOME = {
+    role: 'assistant',
+    content: `Hi! I'm your L&D solution advisor.\n\nDescribe your learning challenge or project — the business problem you're solving, your audience, timeline, or any constraints — and I'll recommend the best solutions from our catalog and help you think it through.\n\nWhat are you working on?`
+  };
+  const [messages, setMessages] = useState([WELCOME]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const bottomRef = useRef(null);
+  const textareaRef = useRef(null);
+
+  useEffect(() => {
+    if (bottomRef.current) {
+      bottomRef.current.parentElement.scrollTop = bottomRef.current.offsetTop;
+    }
+  }, [messages, loading]);
+
+  async function send() {
+    const text = input.trim();
+    if (!text || loading) return;
+    setInput('');
+
+    const newMessages = [...messages, { role: 'user', content: text }];
+    setMessages(newMessages);
+    setLoading(true);
+
+    try {
+      // Wait up to 3s for window.claude to be injected by the host environment
+      let attempts = 0;
+      while (!window.claude && attempts < 30) {
+        await new Promise(r => setTimeout(r, 100));
+        attempts++;
+      }
+      if (!window.claude) {
+        throw new Error('AI advisor not available — please make sure you\'re viewing this page inside the preview pane.');
+      }
+
+      // Skip the local welcome bubble (index 0, assistant) so API starts with a user turn.
+      // Prepend system prompt only to the very first user message.
+      const turns = newMessages.slice(1);
+      const apiMessages = turns.map((m, i) => ({
+        role: m.role,
+        content: (i === 0 && m.role === 'user')
+          ? SYSTEM_PROMPT + '\n\n' + m.content
+          : m.content
+      }));
+
+      const reply = await window.claude.complete({ messages: apiMessages });
+      setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+    } catch(e) {
+      console.error('Claude error:', e);
+      setMessages(prev => [...prev, { role: 'assistant', content: `⚠ ${e && e.message ? e.message : String(e)}` }]);
+    }
+    setLoading(false);
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  }
+
+  function reset() {
+    setMessages([WELCOME]);
+    setInput('');
+  }
+
+  // Render assistant messages with **bold** support
+  function renderContent(text) {
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} style={{ color: '#fff', fontWeight: 600 }}>{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  }
+
+  return (
+    <section id="matcher" data-screen-label="AI Advisor">
+      <div className="container">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 60, alignItems: 'flex-start' }}>
+          <div>
+            <div className="glass badge" style={{ marginBottom: 18 }}>AI Advisor</div>
+            <h2 className="heading" style={{ fontSize: 'clamp(34px, 4vw, 52px)', marginBottom: 16 }}>Describe your project.<br />Get a recommendation.</h2>
+            <p style={{ color: 'rgba(255,255,255,0.42)', fontSize: 14, lineHeight: 1.8, marginBottom: 28 }}>
+              The more context you give, the better the advice. Try including:
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {['The business problem you\'re solving', 'Audience size and location', 'Timeline and urgency', 'Content complexity level', 'Budget or constraints', 'Whether it\'s a one-time or recurring need'].map(h => (
+                <div key={h} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.2)', flexShrink: 0, marginTop: 2 }}>—</span>
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.38)' }}>{h}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="glass" style={{ borderRadius: 24, padding: '28px 28px 24px', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'oklch(70% 0.16 160)' }} />
+                <span style={{ fontSize: 13, fontWeight: 500 }}>Solution Advisor</span>
+              </div>
+              {messages.length > 1 && (
+                <button onClick={reset} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.28)', fontSize: 12, cursor: 'pointer', fontFamily: 'Barlow' }}>
+                  Start over ↺
+                </button>
+              )}
+            </div>
+
+            <div className="chat-area">
+              {messages.map((m, i) => (
+                <div key={i} className={`chat-bubble ${m.role} fade-up`}>
+                  {m.role === 'assistant' ? renderContent(m.content) : m.content}
+                </div>
+              ))}
+              {loading && (
+                <div className="chat-bubble assistant" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div className="spinner" />
+                  <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>Thinking…</span>
+                </div>
+              )}
+              <div ref={bottomRef} />
+            </div>
+
+            <div className="chat-input-row">
+              <textarea
+                ref={textareaRef}
+                className="chat-textarea"
+                rows={2}
+                placeholder="Describe your project or ask a question…"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={handleKey}
+              />
+              <button className="send-btn" onClick={send} disabled={loading || !input.trim()}>
+                {loading ? <div className="spinner" /> : '↑'}
+              </button>
+            </div>
+            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.18)', marginTop: 10, textAlign: 'center' }}>
+              Shift+Enter for new line · Enter to send
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── ACCORDION ─────────────────────────────────────────────────────────────────
+function Accordion({ items }) {
+  const [open, setOpen] = useState(null);
+  return (
+    <div>
+      {items.map((item, i) => (
+        <div key={i} className="acc-item">
+          <button className="acc-btn" onClick={() => setOpen(open === i ? null : i)}>
+            <span>{item.q}</span>
+            <span style={{ fontSize: 22, color: 'rgba(255,255,255,0.3)', transform: open === i ? 'rotate(45deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0, marginLeft: 16 }}>+</span>
+          </button>
+          <div className="acc-content" style={{ maxHeight: open === i ? 300 : 0, paddingBottom: open === i ? 18 : 0 }}>
+            {item.a}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── APP ───────────────────────────────────────────────────────────────────────
+function App() {
+  const [modal, setModal] = useState(null);
+
+  return (
+    <>
+      {/* NAV */}
+      <nav className="glass">
+        {[['What It Is','#about'],['How to Use','#howto'],['Browse','#browse'],['Advisor','#matcher'],['FAQ','#faq']].map(([label, href]) => (
+          <a key={label} className="nav-link" href={href}>{label}</a>
+        ))}
+      </nav>
+
+      {/* HERO */}
+      <section className="hero" data-screen-label="Hero">
+        <div className="orb" style={{ width: 700, height: 700, top: '-15%', left: '15%', background: 'oklch(50% 0.14 230)' }} />
+        <div className="orb" style={{ width: 500, height: 500, bottom: '-5%', right: '5%', background: 'oklch(50% 0.14 160)' }} />
+        <div className="orb" style={{ width: 400, height: 400, bottom: '10%', left: '-5%', background: 'oklch(50% 0.14 300)' }} />
+
+        <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
+          <div className="glass badge" style={{ marginBottom: 28 }}>Learning & Development · Solutions Catalog</div>
+          <h1 className="heading" style={{ fontSize: 'clamp(50px, 9vw, 104px)', marginBottom: 28, maxWidth: 860, margin: '0 auto 28px' }}>
+            The right solution<br />for every learning need
+          </h1>
+          <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.48)', maxWidth: 540, margin: '0 auto 44px', fontWeight: 300, lineHeight: 1.75 }}>
+            32 solutions. 8 categories. One AI advisor to match your project to the right approach — with the tradeoffs visible before you commit.
+          </p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <a href="#matcher" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '13px 28px', borderRadius: 999,
+              background: '#fff', color: '#000',
+              fontFamily: 'Barlow', fontWeight: 500, fontSize: 14,
+              textDecoration: 'none'
+            }}>
+              Talk to the advisor →
+            </a>
+            <a href="#browse" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '13px 28px', borderRadius: 999,
+              fontFamily: 'Barlow', fontWeight: 500, fontSize: 14,
+              textDecoration: 'none', color: 'rgba(255,255,255,0.75)',
+              border: '1px solid rgba(255,255,255,0.2)'
+            }}>
+              Browse the catalog
+            </a>
+          </div>
+        </div>
+
+        <div style={{ position: 'absolute', bottom: 36, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 1, height: 44, background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.2))' }} />
+          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.18)', letterSpacing: '0.14em', textTransform: 'uppercase' }}>Scroll</span>
+        </div>
+      </section>
+
+      {/* WHAT IS IT */}
+      <section id="about" data-screen-label="What It Is">
+        <div className="container">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'center' }}>
+            <div>
+              <div className="glass badge" style={{ marginBottom: 18 }}>What It Is</div>
+              <h2 className="heading" style={{ fontSize: 'clamp(34px, 4vw, 56px)', marginBottom: 20 }}>A decision-making tool, not a menu</h2>
+              <p style={{ color: 'rgba(255,255,255,0.48)', lineHeight: 1.85, marginBottom: 18, fontSize: 15 }}>
+                Every learning solution comes with tradeoffs — in cost, speed, depth, and scalability. This catalog makes those tradeoffs visible <em>before</em> you commit.
+              </p>
+              <p style={{ color: 'rgba(255,255,255,0.48)', lineHeight: 1.85, fontSize: 15 }}>
+                Use it at the start of a stakeholder conversation, during a needs analysis, or when a request comes in and you're evaluating options. It's a thinking tool for our team, not a checklist.
+              </p>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              {[
+                { label: '32 solutions', sub: 'Across 8 categories' },
+                { label: 'Tradeoffs visible', sub: 'Cost, effort, ease of update' },
+                { label: 'AI-powered advisor', sub: 'Describe your project, get a match' },
+                { label: 'Built for our team', sub: 'Penske-specific context throughout' },
+              ].map(item => (
+                <div key={item.label} className="glass" style={{ borderRadius: 16, padding: '20px 18px' }}>
+                  <p style={{ fontFamily: 'Instrument Serif', fontStyle: 'italic', fontSize: 22, marginBottom: 5 }}>{item.label}</p>
+                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)' }}>{item.sub}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="divider" />
+
+      {/* HOW TO USE */}
+      <section id="howto" data-screen-label="How To Use">
+        <div className="container">
+          <div style={{ textAlign: 'center', marginBottom: 52 }}>
+            <div className="glass badge" style={{ marginBottom: 18 }}>How To Use It</div>
+            <h2 className="heading" style={{ fontSize: 'clamp(34px, 4vw, 58px)' }}>Four steps to the right choice</h2>
+          </div>
+          <div className="steps-grid">
+            {[
+              { n: '01', title: 'Define the problem', body: 'Start with the business need, not the solution. What behavior or performance outcome are you trying to change?' },
+              { n: '02', title: 'Browse the catalog', body: 'Explore the 32 solution types. Note which fit your audience size, timeline, and content complexity.' },
+              { n: '03', title: 'Talk to the advisor', body: 'Describe your project to the AI advisor. It will recommend solutions from the catalog and surface key questions to pressure-test your thinking.' },
+              { n: '04', title: 'Make the call', body: 'Use the match plus your professional judgment. Present a recommendation with clear rationale to your stakeholder.' },
+            ].map(step => (
+              <div key={step.n} className="glass" style={{ borderRadius: 20, padding: '28px 22px' }}>
+                <p className="heading" style={{ fontSize: 48, color: 'rgba(255,255,255,0.08)', lineHeight: 1, marginBottom: 18 }}>{step.n}</p>
+                <h3 style={{ fontWeight: 500, fontSize: 15, marginBottom: 10 }}>{step.title}</h3>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.42)', lineHeight: 1.75 }}>{step.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="divider" />
+
+      {/* CATALOG */}
+      <CatalogSection onCardClick={setModal} />
+
+      <div className="divider" />
+
+      {/* CHAT ADVISOR */}
+      <ChatAdvisor />
+
+      <div className="divider" />
+
+      {/* FAQ */}
+      <section id="faq" data-screen-label="FAQ">
+        <div className="container-sm">
+          <div style={{ textAlign: 'center', marginBottom: 52 }}>
+            <div className="glass badge" style={{ marginBottom: 18 }}>FAQ</div>
+            <h2 className="heading" style={{ fontSize: 'clamp(34px, 4vw, 58px)' }}>Common questions</h2>
+          </div>
+          <Accordion items={FAQS} />
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer style={{ padding: '36px 40px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'oklch(68% 0.14 160)' }} />
+          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.22)' }}>L&D Solutions Catalog · Internal use only · 2026</span>
+        </div>
+        <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.18)' }}>32 solutions · 8 categories</span>
+      </footer>
+
+      {/* MODAL */}
+      {modal && <SolutionModal s={modal} onClose={() => setModal(null)} />}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
