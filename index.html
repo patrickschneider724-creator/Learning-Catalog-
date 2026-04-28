@@ -277,12 +277,22 @@ function isHardUpdate(s) { return /difficult/i.test(s.update); }
 function scoreSolution(s, p) {
   let score = 0;
   const reasons = [];
-  // Outcome
-  if (p.outcome !== 'any') {
-    const fit = OUTCOME_FIT[p.outcome];
-    if (fit.high.includes(s.id)) { score += 3; reasons.push(`strong fit for ${p.outcome.replace('_',' ')}`); }
-    else if (fit.med.includes(s.id)) { score += 1; }
-    else { score -= 1.5; }
+  // Outcome (multi-select — array of selected outcomes)
+  const selectedOutcomes = Array.isArray(p.outcome) ? p.outcome : (p.outcome === 'any' ? [] : [p.outcome]);
+  if (selectedOutcomes.length > 0) {
+    let outcomeScore = 0;
+    let hits = 0;
+    const fitLabels = [];
+    selectedOutcomes.forEach(o => {
+      const fit = OUTCOME_FIT[o];
+      if (!fit) return;
+      if (fit.high.includes(s.id)) { outcomeScore += hits === 0 ? 3 : 1.75; hits++; fitLabels.push(o); }
+      else if (fit.med.includes(s.id)) { outcomeScore += hits === 0 ? 1 : 0.5; hits++; }
+    });
+    if (hits === 0) outcomeScore = -1.5;
+    score += outcomeScore;
+    if (fitLabels.length === 1) reasons.push(`fits ${fitLabels[0]}`);
+    else if (fitLabels.length >= 2) reasons.push(`fits ${fitLabels.length} of your outcomes`);
   }
   // Audience
   if (p.audience !== 'any') {
@@ -368,9 +378,119 @@ function buildQuestions(p, top) {
   const extra = [];
   Object.keys(p).forEach(k => {
     const v = p[k];
-    if (v !== 'any' && dimensional[k] && dimensional[k][v]) extra.push(dimensional[k][v]);
+    if (k === 'outcome' && Array.isArray(v)) {
+      v.forEach(o => { if (dimensional.outcome[o]) extra.push(dimensional.outcome[o]); });
+    } else if (v !== 'any' && dimensional[k] && dimensional[k][v]) {
+      extra.push(dimensional[k][v]);
+    }
   });
   return [...base, ...extra].slice(0, 6);
+}
+
+// ── BLENDED APPROACHES ───────────────────────────────────────────────────────
+// Each blend is a recipe of 2-4 catalog solutions that work well together.
+// `fits` filters say which constraint values the blend suits; missing dims = no constraint.
+const BLENDS = [
+  {
+    id: 'compliance_refresh', name: 'Compliance refresh',
+    description: 'Bite-sized awareness, in-moment reference, and a checkpoint to verify — built for annual compliance topics.',
+    components: ['synthesia','jobaid','quiz'],
+    fits: { outcome: ['knowledge','awareness'], audience: ['medium','large'], timeline: ['urgent','normal'], delivery: ['digital','blended'] }
+  },
+  {
+    id: 'onboarding', name: 'New-hire onboarding playbook',
+    description: 'Welcome story, structured modules, on-the-job reference, and a human guide to lean on.',
+    components: ['sway','rise','jobaid','mentoring'],
+    fits: { outcome: ['knowledge','behavior','procedure'], delivery: ['blended'] }
+  },
+  {
+    id: 'skill_bootcamp', name: 'Skill-building bootcamp',
+    description: 'Live practice, safe simulation, and on-the-job verification — best when the skill is hard to learn from a deck.',
+    components: ['vilt','simulation','observation'],
+    fits: { outcome: ['skill','behavior'], audience: ['small','medium'], delivery: ['live','blended'] }
+  },
+  {
+    id: 'leadership_dev', name: 'Leadership development arc',
+    description: 'Facilitated workshops to build the muscle, mentoring for context, and a curated library for self-deepening.',
+    components: ['workshop','mentoring','linkedin'],
+    fits: { outcome: ['behavior','skill'], audience: ['small','medium'], timeline: ['flexible','normal'] }
+  },
+  {
+    id: 'quick_turn', name: 'Quick-turn enablement',
+    description: 'Get the team functional fast — reference first, social reinforcement second, micro-nudges to lock it in.',
+    components: ['jobaid','lunchandlearn','micro'],
+    fits: { outcome: ['knowledge','procedure','awareness'], timeline: ['urgent'], budget: ['low','medium'] }
+  },
+  {
+    id: 'procedure_rollout', name: 'Procedure rollout',
+    description: 'Explain the why with a short video, capture the how with a digital checklist, host the canon in a hub.',
+    components: ['synthesia','powerapps','sharepoint'],
+    fits: { outcome: ['procedure','knowledge'], audience: ['medium','large'], delivery: ['digital','blended'] }
+  },
+  {
+    id: 'behavior_loop', name: 'Behavior reinforcement loop',
+    description: 'Live kickoff to set expectations, ongoing nudges to stay top-of-mind, observation to make it stick.',
+    components: ['workshop','mobilepush','observation'],
+    fits: { outcome: ['behavior'], stability: ['stable','any'], delivery: ['live','blended'] }
+  },
+  {
+    id: 'self_serve', name: 'Self-serve learning hub',
+    description: 'Curated library + searchable knowledge hub + AI assistant for on-demand questions. Ideal for distributed teams.',
+    components: ['linkedin','sharepoint','chatbot'],
+    fits: { outcome: ['knowledge','procedure','awareness'], delivery: ['digital'], audience: ['large'] }
+  },
+  {
+    id: 'remote_skill', name: 'Remote skill-building',
+    description: 'VILT cohorts for live practice, microlearning for spaced reinforcement, mentoring across locations.',
+    components: ['vilt','micro','mentoring'],
+    fits: { outcome: ['skill','behavior'], delivery: ['blended','digital'], audience: ['medium','large'] }
+  },
+  {
+    id: 'awareness_campaign', name: 'Awareness campaign',
+    description: 'High-reach video plus mobile reminders and a short knowledge check to close the loop.',
+    components: ['synthesia','mobilepush','quiz'],
+    fits: { outcome: ['awareness','knowledge'], audience: ['medium','large'], timeline: ['urgent','normal'] }
+  },
+  {
+    id: 'low_budget_combo', name: 'Lean budget combo',
+    description: 'Three free or near-free pieces — social knowledge share, structured reference, and peer learning.',
+    components: ['lunchandlearn','qrg','mentoring'],
+    fits: { outcome: ['knowledge','behavior','awareness'], budget: ['low'] }
+  },
+  {
+    id: 'hands_on_certification', name: 'Hands-on certification path',
+    description: 'OJT for context, observation for assessment, badge to recognize completion — common for safety-critical roles.',
+    components: ['ojt','observation','badge'],
+    fits: { outcome: ['skill','behavior','procedure'], delivery: ['live','blended'] }
+  }
+];
+
+function scoreBlend(blend, p) {
+  let score = 0;
+  let matched = [];
+  // Outcome — multi-select aware
+  const selectedOutcomes = Array.isArray(p.outcome) ? p.outcome : (p.outcome === 'any' ? [] : [p.outcome]);
+  if (selectedOutcomes.length > 0) {
+    const overlap = selectedOutcomes.filter(o => blend.fits.outcome && blend.fits.outcome.includes(o));
+    if (overlap.length === 0) return null; // hard miss
+    score += 2 + overlap.length; // 3 for one, 4 for two, 5 for three
+    if (overlap.length === selectedOutcomes.length) matched.push('covers all your outcomes');
+    else if (overlap.length >= 2) matched.push(`covers ${overlap.length} of your outcomes`);
+    else matched.push(`fits ${overlap[0]}`);
+  }
+  // Other dims
+  ['audience','timeline','budget','stability','delivery'].forEach(dim => {
+    const v = p[dim];
+    if (v === 'any' || v === undefined) return;
+    if (!blend.fits[dim]) return; // blend has no opinion on this dim
+    if (blend.fits[dim].includes(v)) {
+      score += 1;
+      matched.push(dim);
+    } else {
+      score -= 1.25;
+    }
+  });
+  return { score, matched };
 }
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
@@ -499,8 +619,14 @@ function CatalogSection({ onCardClick }) {
 }
 
 // ── GUIDED MATCHER ────────────────────────────────────────────────────────────
+const OUTCOME_CHIPS = [
+  ['knowledge','Build knowledge'],
+  ['skill','Build a skill (practice & apply)'],
+  ['procedure','Reference at moment of need'],
+  ['behavior','Change a behavior over time'],
+  ['awareness','Spread awareness / inform']
+];
 const PREF_OPTIONS = {
-  outcome:  [['any','Any / not sure yet'],['knowledge','Build knowledge / awareness'],['skill','Build a skill (practice & apply)'],['procedure','Reference at moment of need'],['behavior','Change a behavior over time'],['awareness','Spread awareness / inform']],
   audience: [['any','Any size'],['small','Small (under 25)'],['medium','Medium (25–250)'],['large','Large (250+)']],
   timeline: [['any','No timeline pressure'],['urgent','Urgent (under 2 weeks)'],['normal','Normal (1–3 months)'],['flexible','Flexible (3+ months)']],
   budget:   [['any','No budget constraint'],['low','Low / minimal'],['medium','Medium'],['high','High — quality matters more than cost']],
@@ -508,7 +634,6 @@ const PREF_OPTIONS = {
   delivery: [['any','Open to anything'],['digital','Digital / self-paced only'],['live','Live / facilitated'],['blended','Blended (digital + live)']]
 };
 const PREF_LABELS = {
-  outcome: 'What outcome are you driving?',
   audience: 'How big is the audience?',
   timeline: 'How urgent is it?',
   budget: 'What\'s the budget situation?',
@@ -517,17 +642,30 @@ const PREF_LABELS = {
 };
 
 function GuidedMatcher({ onCardClick }) {
-  const [prefs, setPrefs] = useState({
-    outcome: 'any', audience: 'any', timeline: 'any', budget: 'any', stability: 'any', delivery: 'any'
-  });
+  const initialPrefs = { outcome: [], audience: 'any', timeline: 'any', budget: 'any', stability: 'any', delivery: 'any' };
+  const [prefs, setPrefs] = useState(initialPrefs);
   const setPref = (k, v) => setPrefs(p => ({ ...p, [k]: v }));
-  const reset = () => setPrefs({ outcome: 'any', audience: 'any', timeline: 'any', budget: 'any', stability: 'any', delivery: 'any' });
+  const toggleOutcome = (v) => setPrefs(p => ({
+    ...p,
+    outcome: p.outcome.includes(v) ? p.outcome.filter(x => x !== v) : [...p.outcome, v]
+  }));
+  const reset = () => setPrefs(initialPrefs);
 
-  const hasAnyPref = Object.values(prefs).some(v => v !== 'any');
+  const hasAnyPref = prefs.outcome.length > 0 ||
+    Object.entries(prefs).some(([k, v]) => k !== 'outcome' && v !== 'any');
   const scored = SOLUTIONS.map(s => ({ solution: s, ...scoreSolution(s, prefs) }));
   const ranked = [...scored].sort((a, b) => b.score - a.score);
   const top = hasAnyPref ? ranked.slice(0, 5).filter(r => r.score > 0) : [];
   const questions = buildQuestions(prefs, top);
+
+  // Blended approaches
+  const blendsScored = hasAnyPref
+    ? BLENDS.map(b => ({ blend: b, ...(scoreBlend(b, prefs) || { score: -999, matched: [] }) }))
+        .filter(b => b.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3)
+    : [];
+  const solutionById = id => SOLUTIONS.find(s => s.id === id);
 
   return (
     <section id="matcher" data-screen-label="Solution Matcher">
@@ -544,6 +682,38 @@ function GuidedMatcher({ onCardClick }) {
 
         {/* FORM */}
         <div className="glass" style={{ borderRadius: 24, padding: '28px 28px 24px', marginBottom: 28 }}>
+          {/* Outcome — multi-select chips */}
+          <div style={{ marginBottom: 22 }}>
+            <label style={{ display: 'block', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', marginBottom: 4 }}>
+              What outcome(s) are you driving?
+            </label>
+            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginBottom: 10 }}>
+              Pick all that apply — projects often drive more than one.
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {OUTCOME_CHIPS.map(([v, label]) => {
+                const active = prefs.outcome.includes(v);
+                return (
+                  <button
+                    key={v}
+                    onClick={() => toggleOutcome(v)}
+                    style={{
+                      fontSize: 12, fontWeight: 500, letterSpacing: '0.03em',
+                      padding: '8px 14px', borderRadius: 999,
+                      border: `1px solid ${active ? 'rgba(255,255,255,0.36)' : 'rgba(255,255,255,0.12)'}`,
+                      background: active ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.04)',
+                      color: active ? '#fff' : 'rgba(255,255,255,0.55)',
+                      cursor: 'pointer', fontFamily: 'Barlow',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    {active ? '✓ ' : ''}{label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 18 }}>
             {Object.keys(PREF_OPTIONS).map(key => (
               <div key={key}>
@@ -650,6 +820,67 @@ function GuidedMatcher({ onCardClick }) {
             </p>
           </div>
         </div>
+
+        {/* BLENDED APPROACHES */}
+        {blendsScored.length > 0 && (
+          <div className="glass" style={{ borderRadius: 24, padding: 28, marginTop: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'oklch(70% 0.16 300)' }} />
+              <h3 style={{ fontSize: 14, fontWeight: 500, letterSpacing: '0.04em' }}>Blended approaches</h3>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginLeft: 'auto' }}>{blendsScored.length} pattern{blendsScored.length === 1 ? '' : 's'}</span>
+            </div>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.7, marginBottom: 20, maxWidth: 720 }}>
+              Strong learning rarely comes from one solution. These are common L&D patterns that combine multiple solutions for more durable outcomes — surfaced because they fit your constraints.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+              {blendsScored.map(({ blend, matched }) => (
+                <div key={blend.id} className="glass" style={{ borderRadius: 16, padding: '20px 20px 18px', background: 'rgba(160,100,240,0.05)' }}>
+                  <h4 style={{ fontFamily: 'Instrument Serif', fontStyle: 'italic', fontSize: 22, lineHeight: 1.15, marginBottom: 8 }}>{blend.name}</h4>
+                  <p style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6, marginBottom: 14 }}>{blend.description}</p>
+
+                  <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Components</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: matched.length ? 14 : 0 }}>
+                    {blend.components.map((cid, idx) => {
+                      const sol = solutionById(cid);
+                      if (!sol) return null;
+                      const cat = getCategoryMeta(sol.category);
+                      return (
+                        <button
+                          key={cid}
+                          onClick={() => onCardClick(sol)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            padding: '8px 12px', borderRadius: 10,
+                            background: 'rgba(255,255,255,0.04)',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            color: 'rgba(255,255,255,0.85)',
+                            cursor: 'pointer', fontFamily: 'Barlow', textAlign: 'left',
+                            fontSize: 13, transition: 'all 0.15s'
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.transform = 'translateX(2px)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.transform = 'none'; }}
+                        >
+                          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', flexShrink: 0, width: 18 }}>{idx + 1}.</span>
+                          <span style={{ flexShrink: 0, width: 6, height: 6, borderRadius: '50%', background: cat.color }} />
+                          <span style={{ fontWeight: 500, flex: 1 }}>{sol.name}</span>
+                          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>→</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {matched.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                      {matched.map(m => (
+                        <span key={m} style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '3px 9px', borderRadius: 999 }}>✓ {m}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
