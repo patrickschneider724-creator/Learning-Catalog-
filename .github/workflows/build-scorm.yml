@@ -1,0 +1,48 @@
+name: Build SCORM package
+
+on:
+  push:
+    branches:
+      - main
+      - claude/implement-index-html-d4T4E
+    paths:
+      - 'index.html'
+      - 'solutions-data.js'
+      - 'scorm/**'
+      - '.github/workflows/build-scorm.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Build SCORM zip
+        run: python3 scorm/build.py
+
+      - name: Upload as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: learning-catalog-scorm
+          path: learning-catalog-scorm.zip
+          if-no-files-found: error
+
+      - name: Publish/update "scorm-latest" release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Replace the rolling release so the download link is always current
+          gh release delete scorm-latest --yes --cleanup-tag 2>/dev/null || true
+          gh release create scorm-latest learning-catalog-scorm.zip \
+            --title "SCORM 1.2 package (latest)" \
+            --notes "Automatically built from \`${GITHUB_REF_NAME}\` @ \`${GITHUB_SHA::7}\`. Upload \`learning-catalog-scorm.zip\` to your LMS as a SCORM 1.2 module."
